@@ -1,0 +1,126 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 8
+Rules claiming more threads will be scaled down.
+Job stats:
+job                     count
+--------------------  -------
+all                         1
+bwa_map_paired              1
+bwa_map_single              2
+gvcf_to_vcf                 1
+mark_duplicates             3
+merge_gvcfs                 1
+process_bam                 3
+variant_calling_gvcf        3
+total                      15
+
+Select jobs to execute...
+
+[Fri Nov 17 08:32:32 2023]
+rule bwa_map_paired:
+    input: data/fastq_samples/ERR1308616_1.fastq, data/fastq_samples/ERR1308616_2.fastq
+    output: results/mapped_reads/ERR1308616.sam
+    jobid: 6
+    reason: Missing output files: results/mapped_reads/ERR1308616.sam
+    wildcards: sample=ERR1308616
+    resources: tmpdir=/tmp
+
+
+[Fri Nov 17 08:32:32 2023]
+rule bwa_map_single:
+    input: data/fastq_samples/SRR2062447.fastq
+    output: results/mapped_reads/SRR2062447.sam
+    jobid: 10
+    reason: Missing output files: results/mapped_reads/SRR2062447.sam
+    wildcards: sample=SRR2062447
+    resources: tmpdir=/tmp
+
+
+[Fri Nov 17 08:32:32 2023]
+rule bwa_map_single:
+    input: data/fastq_samples/SRR2062448.fastq
+    output: results/mapped_reads/SRR2062448.sam
+    jobid: 14
+    reason: Missing output files: results/mapped_reads/SRR2062448.sam
+    wildcards: sample=SRR2062448
+    resources: tmpdir=/tmp
+
+[Fri Nov 17 08:38:46 2023]
+Finished job 10.
+1 of 15 steps (7%) done
+Select jobs to execute...
+
+[Fri Nov 17 08:38:46 2023]
+rule process_bam:
+    input: results/mapped_reads/SRR2062447.sam
+    output: results/mapped_reads/SRR2062447_sorted.bam
+    jobid: 9
+    reason: Missing output files: results/mapped_reads/SRR2062447_sorted.bam; Input files updated by another job: results/mapped_reads/SRR2062447.sam
+    wildcards: sample=SRR2062447
+    resources: tmpdir=/tmp
+
+[Fri Nov 17 08:38:58 2023]
+Finished job 14.
+2 of 15 steps (13%) done
+Select jobs to execute...
+
+[Fri Nov 17 08:38:58 2023]
+rule process_bam:
+    input: results/mapped_reads/SRR2062448.sam
+    output: results/mapped_reads/SRR2062448_sorted.bam
+    jobid: 13
+    reason: Missing output files: results/mapped_reads/SRR2062448_sorted.bam; Input files updated by another job: results/mapped_reads/SRR2062448.sam
+    wildcards: sample=SRR2062448
+    resources: tmpdir=/tmp
+
+[Fri Nov 17 08:40:14 2023]
+Finished job 9.
+3 of 15 steps (20%) done
+Removing temporary output results/mapped_reads/SRR2062447.sam.
+Select jobs to execute...
+[Fri Nov 17 08:40:26 2023]
+Finished job 13.
+4 of 15 steps (27%) done
+Removing temporary output results/mapped_reads/SRR2062448.sam.
+[Fri Nov 17 08:48:41 2023]
+Finished job 6.
+5 of 15 steps (33%) done
+
+[Fri Nov 17 08:48:41 2023]
+rule process_bam:
+    input: results/mapped_reads/ERR1308616.sam
+    output: results/mapped_reads/ERR1308616_sorted.bam
+    jobid: 5
+    reason: Missing output files: results/mapped_reads/ERR1308616_sorted.bam; Input files updated by another job: results/mapped_reads/ERR1308616.sam
+    wildcards: sample=ERR1308616
+    resources: tmpdir=/tmp
+
+[Fri Nov 17 08:52:25 2023]
+Finished job 5.
+6 of 15 steps (40%) done
+Removing temporary output results/mapped_reads/ERR1308616.sam.
+Select jobs to execute...
+
+[Fri Nov 17 08:52:25 2023]
+rule mark_duplicates:
+    input: results/mapped_reads/ERR1308616_sorted.bam
+    output: results/marked_duplicates/ERR1308616_sorted_marked.bam, results/marked_duplicates/ERR1308616_MarkDup_metrics.txt
+    jobid: 4
+    reason: Missing output files: results/marked_duplicates/ERR1308616_sorted_marked.bam; Input files updated by another job: results/mapped_reads/ERR1308616_sorted.bam
+    wildcards: sample=ERR1308616
+    threads: 8
+    resources: tmpdir=/tmp
+
+[Fri Nov 17 08:55:00 2023]
+Error in rule mark_duplicates:
+    jobid: 4
+    input: results/mapped_reads/ERR1308616_sorted.bam
+    output: results/marked_duplicates/ERR1308616_sorted_marked.bam, results/marked_duplicates/ERR1308616_MarkDup_metrics.txt
+    shell:
+        gatk MarkDuplicatesSpark -I results/mapped_reads/ERR1308616_sorted.bam -O results/marked_duplicates/ERR1308616_sorted_marked.bam         -M results/marked_duplicates/ERR1308616_MarkDup_metrics.txt --create-output-bam-index
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: .snakemake/log/2023-11-17T083232.263798.snakemake.log

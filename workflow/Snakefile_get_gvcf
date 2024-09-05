@@ -1,0 +1,249 @@
+# Author: Louis OLLIVIER (louis.xiv.bis@gmail.com)
+# Date : February 2023 
+
+configfile: "config/config.yaml"
+
+# Load the predefined resource requirments ("config/resources.yaml")
+import yaml, json, numpy as np, pandas as pd
+with open("config/resources.yaml", "r") as f:
+    resources = yaml.safe_load(f)
+
+conda: "workflow/envs/environment.yaml"
+
+############# Downloading, merging and filtering the information files #############
+# Download all the tsv files from the ENA IDs. They contain all the information
+# requiered for the rest of the pipeline (sample ID, ftp link to dl fastq, etc).
+# After that, it's merged into one unique file and filtered / processed (e.g. keep
+# only S.cere sequences). Then, a csv table is created for each ENA_strain ID from the table.
+
+# Done by the Python script ran before this pipeline, we just read the list of IDs
+try:   
+    with open('results/tables_get_gvcf/ENA_strain_list.json', 'r') as file:
+        ENA_strain_list = np.array(json.load(file))
+except FileNotFoundError:
+    raise FileNotFoundError("Please, make sure you ran the 'generate_table.py' script before that pipeline (python generate_tables.py get_gvcf). If you did, the output file was not correctly created.")
+
+localrules:
+    all,
+
+
+# IMPORTANT INFORMATION :
+# We want to run the following steps (alignement, etc) for each individual strain of each article.
+# The problem is, on some article, a strain is sequenced more than once. Then, the first steps
+# (aligment, etc) will be done for each sample and then the samples of the same strain for each
+# article will be merged into a single strain BAM file.
+# We the the "priority" in snakemake to make sure that the pipeline will rather do the whole way
+# to gVCF for a given strain (of a given article) instead of doing the mapping on all sample at
+# the same time. This way, we won't have to store a large number of fastq at the same time.
+# Note: most of the strains are sequenced only once per paper.
+
+
+rule all:
+    input:
+        expand("results/gvcf/{ENA_strain}.g.vcf.gz", ENA_strain=ENA_strain_list),
+
+
+# In order to improve storage (but not reproducibilty), we gather the fastq dowloading, mapping and bam merge
+# into the same rule. This rule does the following (in order): download fastq + check md5, mapping, sam to bam
+# adding read readgroup and then merge all the bam together (since it's the same strain).
+
+
+rule fastq_to_mergedbam:
+    priority: 2
+    input:
+        table="results/tables_get_gvcf/{ENA_strain}.csv",
+    output:
+        merged_bam=temp("results/fastq_to_bam/{ENA_strain}_merged.bam"),
+    params:
+        ref_genome=config["ref_genome"],
+        threads=resources["fastq_to_mergedbam"]["cpu_tasks"],
+    threads: resources["fastq_to_mergedbam"]["cpu_tasks"]
+    resources:
+        slurm_partition=resources["fastq_to_mergedbam"]["partition"],
+        mem_mb=resources["fastq_to_mergedbam"]["memory"],
+        tasks=resources["fastq_to_mergedbam"]["tasks"],
+        cpus_per_task=resources["fastq_to_mergedbam"]["cpu_tasks"],
+        jobname=resources["fastq_to_mergedbam"]["jobname"],
+    log:
+        stdout="logs/fastq_to_mergedbam_{ENA_strain}.stdout", stderr="logs/fastq_to_mergedbam_{ENA_strain}.stderr"
+    run:
+        # Initialize temporary working directory
+        tmp_wd = "./results/fastq_to_bam/"
+        if not os.path.exists(tmp_wd):
+            os.makedirs(tmp_wd)
+
+        df = pd.read_csv(input.table)
+
+        # Loop through each line of the df (= 1 run) to download and map each run individually
+        # and merge the resulting files after
+        for index, row in df.iterrows():
+            # Download fastq & check md5 for PAIRED / SINGLE ends (easier to split that to have one on the same code)
+            if row.end == "SINGLE":
+                fastq_file = f"{tmp_wd}{row.run_accession}.fastq"
+
+                # Download fastq and check if md5 is correct
+                shell(
+                    "workflow/scripts/dl_check_fastq.sh {fastq_file} {row.fastq_ftp} {row.fastq_md5} > {log.stdout} 2> {log.stderr}"
+                )
+
+                # Mapping of the reads and used fastq
+                sam_file = f"{tmp_wd}{row.run_accession}.sam"
+                shell(
+                    "bwa mem {params.ref_genome} -t {params.threads} {fastq_file} -o {sam_file} >> {log.stdout} 2>> {log.stderr}"
+                )
+                os.remove(fastq_file)
+
+            else:  # == PAIRED
+                fastq_file_1 = f"{tmp_wd}{row.run_accession}_1.fastq"
+                fastq_file_2 = f"{tmp_wd}{row.run_accession}_2.fastq"
+    
+                ftp_list = row.fastq_ftp.split(";")
+                md5_list = row.fastq_md5.split(";")
+
+                # Download fastq and check if md5 is correct
+                shell(
+                    "workflow/scripts/dl_check_fastq.sh {fastq_file_1} {ftp_list[0]} {md5_list[0]} >> {log.stdout} 2>> {log.stderr}"
+                )
+                shell(
+                    "workflow/scripts/dl_check_fastq.sh {fastq_file_2} {ftp_list[1]} {md5_list[1]} >> {log.stdout} 2>> {log.stderr}"
+                )
+
+                # Mapping of the reads and used fastq
+                sam_file = f"{tmp_wd}{row.run_accession}.sam"
+                shell(
+                    "bwa mem {params.ref_genome} -t {params.threads} {fastq_file_1} {fastq_file_2} -o {sam_file} >> {log.stdout} 2>> {log.stderr}"
+                )
+                os.remove(fastq_file_1)
+                os.remove(fastq_file_2)
+
+                # Convert SAM to BAM (both PAIRED / SINGLE end now)
+            bam_file = f"{tmp_wd}{row.run_accession}.bam"
+            shell(
+                "samtools view -T {params.ref_genome} -Sb -@ {params.threads} {sam_file} -o {bam_file} -O BAM >> {log.stdout} 2>> {log.stderr}"
+            )
+            os.remove(sam_file)
+
+            # Add read group to each BAM file
+            RG_bam_file = f"{tmp_wd}{row.run_accession}_RG.bam"
+            strain = str(row.ENA_strain_id.split("_")[1])
+            read_group = f"@RG\tID:{row.ENA_strain_id}_{row.run_accession}\tSM:{strain}\tPL:{row.instrument_platform}"
+            shell(
+                "samtools addreplacerg -@ {params.threads} -r '{read_group}' {bam_file} -o {RG_bam_file} -O BAM >> {log.stdout} 2>> {log.stderr}"
+            )
+            os.remove(bam_file)
+
+        # Merge and rename BAM (only rename when 1 file) then delete used files (tool needs a file with 1 bam file per line)
+        merged_bam_file = output.merged_bam
+        RG_bam_list = [
+            f"{tmp_wd}{accession}_RG.bam" for accession in df["run_accession"]
+        ]
+        bam_list_file = f"{tmp_wd}{wildcards.ENA_strain}_bamlist.txt"  # file w/ list of BAM files to merge for the tool
+        with open(bam_list_file, "w") as file:
+            for bam in RG_bam_list:
+                file.write(str(bam) + "\n")
+
+        if len(RG_bam_list) == 1:  # no BAM to merge = rename only
+            os.rename(RG_bam_list[0], merged_bam_file)
+        else:  # merge all the BAM in the list
+            shell(
+                "samtools merge -@ {params.threads} -b {bam_list_file} {merged_bam_file} -O BAM >> {log.stdout} 2>> {log.stderr}"
+            )
+            for rg_bam in RG_bam_list:
+                os.remove(rg_bam)
+        os.remove(bam_list_file)
+
+
+##############################################################################
+
+############# BAM processing #############
+# Sort the BAM files and index them in the first place. Then mark duplicates
+# them to be ready for variant calling.
+
+
+rule sort_bam:
+    priority: 4
+    input:
+        "results/fastq_to_bam/{ENA_strain}_merged.bam",
+    output:
+        temp("results/bam/{ENA_strain}_sorted.bam"),
+    params:
+        threads=resources["sort_bam"]["cpu_tasks"],
+    threads: resources["sort_bam"]["cpu_tasks"]
+    resources:
+        slurm_partition=resources["sort_bam"]["partition"],
+        mem_mb=resources["sort_bam"]["memory"],
+        tasks=resources["sort_bam"]["tasks"],
+        cpus_per_task=resources["sort_bam"]["cpu_tasks"],
+        jobname=resources["sort_bam"]["jobname"],
+    log:
+        stdout="logs/sort_bam_{ENA_strain}.stdout", stderr="logs/sort_bam_{ENA_strain}.stderr"
+    shell:
+        "samtools sort -@ {params.threads} {input} -o {output} -O BAM > {log.stdout} 2> {log.stderr}"
+
+
+rule index_bam:
+    priority: 6
+    input:
+        "results/bam/{ENA_strain}_sorted.bam",
+    output:
+        "results/bam/{ENA_strain}_sorted.bam.bai",
+    params:
+        threads=resources["index_bam"]["cpu_tasks"],
+    threads: resources["index_bam"]["cpu_tasks"]
+    resources:
+        slurm_partition=resources["index_bam"]["partition"],
+        mem_mb=resources["index_bam"]["memory"],
+        tasks=resources["index_bam"]["tasks"],
+        cpus_per_task=resources["index_bam"]["cpu_tasks"],
+        jobname=resources["index_bam"]["jobname"],
+    log:
+        stdout="logs/index_bam_{ENA_strain}.stdout", stderr="logs/index_bam_{ENA_strain}.stderr"
+    shell:
+        "samtools index -@ {params.threads} {input} -o {output} > {log.stdout} 2> {log.stderr}"
+
+
+rule mark_duplicates:
+    priority: 8
+    input:
+        "results/bam/{ENA_strain}_sorted.bam",
+    output:
+        bam=temp("results/marked_duplicates/{ENA_strain}_sorted_marked.bam"),
+        metrics="results/metrics/MarkDuplicates/{ENA_strain}_MarkDup_metrics.txt",
+    threads: resources["mark_duplicates"]["cpu_tasks"]
+    resources:
+        slurm_partition=resources["mark_duplicates"]["partition"],
+        mem_mb=resources["mark_duplicates"]["memory"],
+        tasks=resources["mark_duplicates"]["tasks"],
+        cpus_per_task=resources["mark_duplicates"]["cpu_tasks"],
+        jobname=resources["mark_duplicates"]["jobname"],
+    log:
+        stdout="logs/mark_duplicates_{ENA_strain}.stdout", stderr="logs/mark_duplicates_{ENA_strain}.stderr"
+    shell:
+        "gatk MarkDuplicatesSpark -I {input} -O {output.bam} \
+        -M {output.metrics} --create-output-bam-index > {log.stdout} 2> {log.stderr}"
+
+##############################################################################
+############# Variant calling (BAM -> gVCF -> VCF) #############
+# Variant calling for each genome, stored into per strain gVCF files
+# using gatk HaplotypeCaller.
+
+
+rule variant_calling_gvcf:
+    priority: 10
+    input:
+        "results/marked_duplicates/{ENA_strain}_sorted_marked.bam",
+    output:
+        "results/gvcf/{ENA_strain}.g.vcf.gz",  # needed if we add new samples to merge gvcf 
+    params:
+        ref_genome=config["ref_genome"],
+    threads: resources["variant_calling_gvcf"]["cpu_tasks"]
+    resources:
+        slurm_partition=resources["variant_calling_gvcf"]["partition"],
+        mem_mb=resources["variant_calling_gvcf"]["memory"],
+        tasks=resources["variant_calling_gvcf"]["tasks"],
+        cpus_per_task=resources["variant_calling_gvcf"]["cpu_tasks"],
+        jobname=resources["variant_calling_gvcf"]["jobname"],
+    log:
+        stdout="logs/variant_calling_gvcf_{ENA_strain}.stdout", stderr="logs/variant_calling_gvcf_{ENA_strain}.stderr"
+    shell:
+        "gatk HaplotypeCaller -R {params.ref_genome} -I {input} -O {output} -ERC GVCF > {log.stdout} 2> {log.stderr}"

@@ -1,0 +1,15 @@
+INFO [2024-08-29 14:07:26] $x
+INFO [2024-08-29 14:07:26] list(qd.pass, mq.pass, sor.pass, mqrs.pass, rprs.pass)
+INFO [2024-08-29 14:07:26] 
+INFO [2024-08-29 14:07:26] $category.names
+INFO [2024-08-29 14:07:26] c("QD", "MQ", "SOR", "MQRanksSum", "ReadPosRankSum")
+INFO [2024-08-29 14:07:26] 
+INFO [2024-08-29 14:07:26] $fill
+INFO [2024-08-29 14:07:26] c("blue", "darkgreen", "orange", "yellow", "red")
+INFO [2024-08-29 14:07:26] 
+INFO [2024-08-29 14:07:26] $output
+INFO [2024-08-29 14:07:26] [1] TRUE
+INFO [2024-08-29 14:07:26] 
+INFO [2024-08-29 14:07:26] $filename
+INFO [2024-08-29 14:07:26] [1] "Venn_5params_Filters"
+INFO [2024-08-29 14:07:26] 

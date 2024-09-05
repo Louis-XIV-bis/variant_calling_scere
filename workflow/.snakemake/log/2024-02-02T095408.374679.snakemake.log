@@ -1,0 +1,3 @@
+WorkflowError in file /home/lollivier/Documents/pipeline/workflow/Snakefile, line 1:
+Workflow defines configfile config/config.yaml but it is not present or accessible (full checked path: /home/lollivier/Documents/pipeline/workflow/config/config.yaml).
+  File "/home/lollivier/Documents/pipeline/workflow/Snakefile", line 1, in <module>

@@ -1,0 +1,111 @@
+fastq_to_mergedbam:
+  partition: long
+  memory: 128000
+  tasks: 1
+  cpu_tasks: 16
+  jobname: fastq_to_mergedbam
+
+sort_bam:
+  partition: fast
+  memory: 64000
+  tasks: 1
+  cpu_tasks: 8
+  jobname: sort_bam
+
+index_bam:
+  partition: fast
+  memory: 64000
+  tasks: 1
+  cpu_tasks: 8
+  jobname: index_bam
+
+mark_duplicates:
+  partition: fast
+  memory: 128000
+  tasks: 1
+  cpu_tasks: 16
+  jobname: mark_duplicates
+
+stats_mapping:
+  partition: fast
+  memory: 64000
+  tasks: 1
+  cpu_tasks: 8
+  jobname: stats_mapping
+
+variant_calling_gvcf:
+  partition: long
+  memory: 128000
+  tasks: 1
+  cpu_tasks: 4
+  jobname: variant_calling_gvcf
+
+merge_gvcfs:
+  partition: long
+  memory: 1000000
+  tasks: 1
+  cpu_tasks: 8
+  jobname: merge_gvcfs
+
+gvcf_to_vcf:
+  partition: long
+  memory: 500000
+  tasks: 1
+  cpu_tasks: 8
+  jobname: gvcf_to_vcf
+
+add_filter_vcf:
+  partition: long
+  memory: 500000
+  tasks: 1
+  cpu_tasks: 8
+  jobname: add_filter_vcf
+
+filter_vcf:
+  partition: long
+  memory: 500000
+  tasks: 1
+  cpu_tasks: 8
+  jobname: filter_vcf
+
+remove_rep_regions:
+  partition: long
+  memory: 128000
+  tasks: 1
+  cpu_tasks: 4
+  jobname: remove_rep_regions
+  
+merge_gvcfs:
+  partition: long
+  memory: 1000000
+  tasks: 1
+  cpu_tasks: 8
+  jobname: merge_gvcfs
+
+gvcf_to_vcf:
+  partition: long
+  memory: 1000000
+  tasks: 1
+  cpu_tasks: 8
+  jobname: gvcf_to_vcf
+
+add_filter_vcf:
+  partition: long
+  memory: 1000000
+  tasks: 1
+  cpu_tasks: 8
+  jobname: add_filter_vcf
+
+filter_vcf:
+  partition: long
+  memory: 1000000
+  tasks: 1
+  cpu_tasks: 8
+  jobname: filter_vcf
+
+remove_rep_regions:
+  partition: long
+  memory: 1000000
+  tasks: 1
+  cpu_tasks: 4
+  jobname: remove_rep_regions

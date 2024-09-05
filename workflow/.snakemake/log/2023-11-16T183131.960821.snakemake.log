@@ -1,0 +1,48 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 8
+Rules claiming more threads will be scaled down.
+Job stats:
+job                     count
+--------------------  -------
+all                         1
+bwa_map_paired              1
+bwa_map_single              2
+gvcf_to_vcf                 1
+mark_duplicates             3
+merge_gvcfs                 1
+process_bam                 3
+variant_calling_gvcf        3
+total                      15
+
+Select jobs to execute...
+
+[Thu Nov 16 18:31:32 2023]
+rule bwa_map_paired:
+    input: data/fastq_samples/ERR1308616_1.fastq, data/fastq_samples/ERR1308616_2.fastq
+    output: results/mapped_reads/ERR1308616.sam
+    jobid: 6
+    reason: Missing output files: results/mapped_reads/ERR1308616.sam
+    wildcards: sample=ERR1308616
+    resources: tmpdir=/tmp
+
+
+[Thu Nov 16 18:31:32 2023]
+rule bwa_map_single:
+    input: data/fastq_samples/SRR2062447.fastq
+    output: results/mapped_reads/SRR2062447.sam
+    jobid: 10
+    reason: Missing output files: results/mapped_reads/SRR2062447.sam
+    wildcards: sample=SRR2062447
+    resources: tmpdir=/tmp
+
+
+[Thu Nov 16 18:31:32 2023]
+rule bwa_map_single:
+    input: data/fastq_samples/SRR2062448.fastq
+    output: results/mapped_reads/SRR2062448.sam
+    jobid: 14
+    reason: Missing output files: results/mapped_reads/SRR2062448.sam
+    wildcards: sample=SRR2062448
+    resources: tmpdir=/tmp
+

@@ -1,0 +1,20 @@
+cluster:
+  sbatch
+    --partition={resources.slurm_partition}
+    --cpus-per-task={resources.cpu_per_task}
+    --mem={resources.mem_mb}
+    --ntasks={resources.tasks}
+    --nodes=1
+    --job-name={resources.jobname}
+    --account=yeast_neutral_model
+default-resources:
+  - partition=fast
+  - account=yeast_neutral_model
+  - mem_mb=100000
+  - cpu_per_task=8
+restart-times: 3
+latency-wait: 60
+jobs: 10
+keep-going: True
+rerun-incomplete: True
+use-conda: True
