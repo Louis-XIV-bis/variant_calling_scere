@@ -1,88 +1,264 @@
-#R script to get the values of parameters
 #!/usr/bin/env Rscript
+## Université Paris-Saclay
+## Lab : LISN ~ UMR9015 ~ BIOINFO team 
 
+#R script to determine the threshold for filtering on each score 
+
+###### Package initialization  ----------------------------------------
+
+if (!require('ggplot2', quietly = T)) install.packages('tibble');
+if (!require('tibble', quietly = T)) install.packages('tibble');
+if (!require('tidyr', quietly = T)) install.packages('tidyr');
+if (!require('dplyr', quietly = T)) install.packages('dplyr');
+if (!require('grid', quietly = T)) install.packages('grid');
+if (!require('gridExtra', quietly = T)) install.packages('gridExtra');
+if (!require('VennDiagram', quietly = T)) install.packages('VennDiagram');
+
+library(ggplot2)
 library(tibble)
 library(tidyr)
-library(lattice)
+library(dplyr)
+library(grid)
+library(gridExtra)
 library(VennDiagram)
 
+########################################################################
+###### Data upload and basic analyses ----------------------------------
 
-# TODO :: script à reprendre propre, bon header etc) 
+rm(list=ls())
 
+# Read the data and store it in a tibble
+annotations <- read.table("../results/table_scores_merged.tsv", sep="\t", header=TRUE, na.strings=".") %>% 
+  as_tibble()
 
-annotations = read.table("../results/table_scores_merged.tsv", sep="\t", header=TRUE, na.strings=".") %>% 
-  as_tibble() %>% 
+head(annotations)
+
+# Number of NA removed 
+rows_before <- nrow(annotations)
+annotations <- annotations %>%
   drop_na()
-annotations
+rows_after <- nrow(annotations)
+cat("Number of rows before dropping NA:", rows_before, ", after: ", rows_after, "\nTotal removed: ", rows_before-rows_after)
 
-# num_rows_with_na <- annotation %>%
-#   filter(if_any(everything(), is.na)) %>%
-#   nrow()
-# print(num_rows_with_na)
-# = 245465
+# Group by CHROM and count the number of SNP for each group
+rows_per_chrom <- annotations %>%
+  group_by(CHROM) %>%
+  summarize(n = n())
+print(rows_per_chrom)
 
-# Limits, for now the ones selected by Fanny for the 2349 data.
-lim.QD = 10
+########################################################################
+###### Filtration of the data based on defined thresholds --------------
+
+# Chosen thresholds 
+lim.QD = 2
 lim.FS = 60
 lim.MQ = 50
-lim.MQRankSum = -12.5
-lim.ReadPosRankSum = -8.0
-lim.SOR = 3.0
+lim.MQRankSum = -10
+lim_inf.ReadPosRankSum = -5.0
+lim_sup.ReadPosRankSum = 5.0
+lim.SOR = 2
+lim.BaseQRankSum = -2
 
-## DISTRIBUTION
-pdf(paste("./","FiltersDistrib.pdf",sep="_"), width= 12, height = 8)
-par(mfrow=c(2,3))
-plot(density(annotations$QD,na.rm=T),main=paste("QD , number of SNPs pre-filter = ",nrow(annotations),sep="") )
-abline(v=lim.QD, col="red")
-prop.QD=length( which(annotations$QD >lim.QD)) / nrow(annotations)
-legend("top", c(paste("Filter: QD >",lim.QD,sep=""), 
-                paste("Prop. pass filter = ", signif(prop.QD,3),sep="")),lty=1,col=c("red", "white"))
+# Calculate the proportion of rows that did not pass each filter
+proportions_pass <- annotations %>%
+  summarize(
+    pass_QD = round(mean(QD > lim.QD), 3),
+    pass_FS = round(mean(FS < lim.FS), 3),
+    pass_MQ = round(mean(MQ > lim.MQ), 3),
+    pass_MQRankSum = round(mean(MQRankSum > lim.MQRankSum), 3),
+    pass_ReadPosRankSum = round(mean(ReadPosRankSum > lim_inf.ReadPosRankSum & ReadPosRankSum < lim_sup.ReadPosRankSum), 3),
+    pass_SOR = round(mean(SOR < lim.SOR), 3),
+    pass_BaseQRanlSum = round(mean(BaseQRankSum > lim.BaseQRankSum), 3)
+  )
+print(proportions_pass)
 
-plot(density(annotations$FS,na.rm=T),main="FS")
-abline(v=lim.FS, col="red")
-prop.FS=length( which(annotations$FS <lim.FS)) / nrow(annotations)
-legend("top", c(paste("Filter: FS <",lim.FS,sep=""), 
-                paste("Prop. pass filter = ", signif(prop.FS,3),sep="")),lty=1,col=c("red", "white"))
+# Filter the data
+filtered_data <- annotations %>%
+  filter(
+    QD > lim.QD,
+    FS < lim.FS,
+    MQ > lim.MQ,
+    MQRankSum > lim.MQRankSum,
+    ReadPosRankSum > lim_inf.ReadPosRankSum,
+    ReadPosRankSum < lim_sup.ReadPosRankSum,
+    SOR < lim.SOR, 
+    BaseQRankSum > lim.BaseQRankSum
+  )
+filtered_data
+cat("Number of rows before filtering:", rows_after, ", after: ", nrow(filtered_data), "\nTotal removed: ", rows_before-nrow(filtered_data))
 
-plot(density(annotations$MQ,na.rm=T),main="MQ")
-abline(v=lim.MQ, col="red")
-prop.MQ=length( which(annotations$MQ >lim.MQ)) / nrow(annotations)
-legend("top", c(paste("Filter: MQ >",lim.MQ,sep=""), 
-                paste("Prop. pass filter = ", signif(prop.MQ,3),sep="")),lty=1,col=c("red", "white"))
+###### QUAL distribution -----------------------------------------------
 
-plot(density(annotations$MQRankSum,na.rm=T),main="MQRankSum")
-abline(v=lim.MQRankSum, col="red")
-prop.MQRankSum=length( which(annotations$MQRankSum > lim.MQRankSum)) / sum(!is.na(annotations$MQRankSum))
-legend("top", c(paste("Filter: MQRankSum >",lim.MQRankSum,sep=""), 
-                paste("Prop. het. SNPs pass filter = ", signif(prop.MQRankSum,3),sep="")),lty=1,col=c("red", "white"))
+max(filtered_data$QUAL)
+QUAL = filtered_data %>%
+  filter(QUAL < 50000) %>% 
+  ggplot(aes(x = QUAL)) +
+  geom_histogram(fill = "skyblue", color = "black") +
+  labs(title = "Distribution of QUAL values (filtered < 50000)", x = "QUAL", y = "Frequency") 
+ggsave("QUAL_distrib.png", plot = QUAL)
 
-plot(density(annotations$ReadPosRankSum,na.rm=T),main="ReadPosRankSum")
-abline(v=lim.ReadPosRankSum, col="red")
-prop.ReadPosRankSum=length( which(annotations$ReadPosRankSum >lim.ReadPosRankSum)) / sum(!is.na(annotations$ReadPosRankSum))
-legend("top", c(paste("Filter: ReadPosRankSum >",lim.ReadPosRankSum, "Nb sites heterozyg =",sum(!is.na(annotations$ReadPosRankSum)),sep=""), 
-                paste("Prop. het. SNPs pass filter = ", signif(prop.ReadPosRankSum,3),sep="")),lty=1,col=c("red", "white"))
+###### Filters scores distribution --------------------------------------
+QD_plot <- ggplot(annotations, aes(x = QD)) +
+  geom_density(fill = "lightblue") +
+  geom_vline(xintercept = lim.QD, color = "red") +
+  ggtitle(paste0("QD > ", lim.QD, ", pass: ", proportions_pass$pass_QD)) +
+  theme_minimal() +  # Set the minimal theme first
+  theme(
+    plot.title = element_text(size = 20, hjust = 0.5, face = "bold")  
+  )
+QD_plot
 
-plot(density(annotations$SOR,na.rm=T),main="SOR")
-abline(v=lim.SOR, col="red")
-prop.SOR=length( which(annotations$SOR <lim.SOR)) / nrow(annotations)
-legend("top", c(paste("Filter: ReadPosRankSum <",lim.SOR,sep=""), 
-                paste("Prop. pass filter = ", signif(prop.SOR,3),sep="")),lty=1,col=c("red", "white"))
+FS_plot <- ggplot(annotations, aes(x = FS)) +
+  geom_density(fill = "lightblue") +
+  geom_vline(xintercept = lim.FS, color = "red") +
+  ggtitle(paste0("FS < ", lim.FS,  ", pass: ", proportions_pass$pass_QD)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, hjust = 0.5, face = "bold")  
+  )
+FS_plot
 
-dev.off()
+MQ_plot <- ggplot(annotations, aes(x = MQ)) +
+  geom_density(fill = "lightblue") +
+  geom_vline(xintercept = lim.MQ, color = "red") +
+  ggtitle(paste0("MQ > ", lim.MQ,  ", pass: ", proportions_pass$pass_MQ)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, hjust = 0.5, face = "bold")  
+  )
+MQ_plot
 
-### VENN DIAGRAM, intersect of filters
-qd.pass = which(annotations$QD>lim.QD)
-fs.pass = which(annotations$FS>lim.FS)
-sor.pass = which(annotations$SOR > lim.SOR)
-mq.pass = which(annotations$MQ < lim.MQ)
-mqrs.pass= which(annotations$MQRankSum < lim.MQRankSum)
-rprs.pass= which(annotations$ReadPosRankSum < lim.ReadPosRankSum)
+MQRS_plot <- ggplot(annotations, aes(x = MQRankSum)) +
+  geom_density(fill = "lightblue") +
+  geom_vline(xintercept = lim.MQRankSum, color = "red") +
+  ggtitle(paste0("MQRankSum > ", lim.MQRankSum,  ", pass: ", proportions_pass$pass_MQRankSum)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, hjust = 0.5, face = "bold")  
+  )
+MQRS_plot
 
-x = venn.diagram(
-  x=list(qd.pass, mq.pass,sor.pass,mqrs.pass,rprs.pass),
-  category.names = c("QD" , "MQ", "SOR","MQRanksSum", "ReadPosRankSum"),
-  fill = c("blue","darkgreen","orange","yellow","red"),
-  output=TRUE,
-  filename = "Venn_5params_Filters"
+ReadPosRankSum_plot <- ggplot(annotations, aes(x = ReadPosRankSum)) +
+  geom_density(fill = "lightblue") +
+  geom_vline(xintercept = lim_inf.ReadPosRankSum, color = "red") +
+  geom_vline(xintercept = lim_sup.ReadPosRankSum, color = "red") +
+  ggtitle(paste0("ReadPosRankSum in range: ", lim_inf.ReadPosRankSum, " to ", lim_sup.ReadPosRankSum, ", pass: ", proportions_pass$pass_ReadPosRankSum)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, hjust = 0.5, face = "bold")  
+  )
+ReadPosRankSum_plot
+
+SOR_plot <- ggplot(annotations, aes(x = SOR)) +
+  geom_density(fill = "lightblue") +
+  geom_vline(xintercept = lim.SOR, color = "red") +
+  ggtitle(paste0("SOR < ", lim.SOR, ", pass: ", proportions_pass$pass_SOR)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, hjust = 0.5, face = "bold")  
+  )
+SOR_plot
+
+BaseQRankSum_plot <- ggplot(annotations, aes(x = BaseQRankSum)) +
+  geom_density(fill = "lightblue") +
+  geom_vline(xintercept = lim.BaseQRankSum, color = "red") +
+  ggtitle(paste0("BaseQRankSum > ", lim.BaseQRankSum, ", pass: ", proportions_pass$pass_SOR)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, hjust = 0.5, face = "bold")  
+  )
+BaseQRankSum_plot
+
+text_grob <- textGrob(
+  paste0("Raw dataset: ", rows_before, " SNP                                        \n", 
+         "After removing sites w/ NA: ", rows_after, " SNP               \n", 
+         "After filtration w/ shown thresholds: ", nrow(filtered_data), " SNP"), 
+  gp = gpar(fontsize = 15, fontface = "bold", col = "black"))
+# Left justification didn't work properly so I wame up with theses spaces
+
+combined_plot <- arrangeGrob(
+  QD_plot, FS_plot, MQ_plot, MQRS_plot, ReadPosRankSum_plot,
+  SOR_plot, BaseQRankSum_plot, text_grob,
+  ncol = 2,
+  layout_matrix = rbind(
+    c(1, 2),
+    c(3, 4),
+    c(5, 6),
+    c(7, 8)  # Ensure the text is in the 8th cell
+  )
 )
-x
+ggsave("FiltersDistrib.png", plot = combined_plot, width = 10, height = 13, units = "in")
+
+
+###### TODO : add proportion data at the end, remove N et bandwrith
+
+### VENN DIAGRAM, intersect of filters  :: A REVOIR 
+qd.pass = which(annotations$QD > lim.QD)
+mq.pass = which(annotations$MQ < lim.MQ)
+fs.pass = which(annotations$FS > lim.FS)
+sor.pass = which(annotations$SOR > lim.SOR)
+mqrs.pass= which(annotations$MQRankSum < lim.MQRankSum)
+rprs.pass= which(annotations$ReadPosRankSum > lim_inf.ReadPosRankSum & annotations$ReadPosRankSum < lim_inf.ReadPosRankSum)
+bqrs.pass= which(annotations$BaseQRankSum > lim.BaseQRankSum)
+
+# Create a list
+param_list <- list(
+  QD = qd.pass,
+  MQ = mq.pass,
+  SOR = fs.pass,
+  MQRS = sor.pass,
+  ReadPosRS = mqrs.pass,
+  FS = rprs.pass,
+  BaseQRS = bqrs.pass
+)
+
+library(VennDiagram)
+
+venn.diagram(
+  x = param_list,
+  category.names = c("QD", "MQ", "FS", "SOR", "MQRS", "ReadPosRS", "BaseQRS"),
+  filename = "Venn_7params_Filters.png",
+  fill = c("blue", "darkgreen", "orange", "yellow", "red", "pink", "purple"),
+  alpha = 0.5,
+  cex = 0.8,
+  cat.cex = 0.6,
+  cat.col =,
+  margin = 0.1
+)
+
+install.packages("venn")
+library(venn)
+venn_result = venn(param_list)
+# Extract the counts of intersections
+intersection_counts <- venn_result$counts
+
+# Print intersection counts
+print(intersection_counts)
+
+
+install.packages("ggVennDiagram")
+library("ggVennDiagram")
+ggVennDiagram(param_list, label_alpha = 0)
+
+
+# TO TEST : 
+install.packages("ggvenn")
+ggvenn(
+  param_list, 
+  fill_color = c("blue", "darkgreen", "orange", "yellow", "red", "pink", "purple"),
+  stroke_size = 0.5, set_name_size = 4
+)
+
+install.package("gplots")`
+library(gplots)
+v.table <- venn(x)
+
+
+install.packages("GenSA")
+install.packages("RcppArmadillo")
+
+install.packages("eulerr")
+library(eulerr)
+
+euler_result <- euler(param_list)
+plot(euler_result)

@@ -21,8 +21,8 @@ if [ ! -f "$input_vcf" ]; then
 fi
 
 # Initialize the output TSV file with header
-echo -e "CHROM\tPOS\tQD\tFS\tMQ\tMQRankSum\tReadPosRankSum\tSOR" > $output_table
+echo -e "CHROM\tPOS\tQUAL\tDP\tQD\tFS\tMQ\tMQRankSum\tReadPosRankSum\tSOR\tBaseQRankSum" > $output_table
 
 # Extract the required fields from the VCF file and append them to the output TSV file
 # The 'bcftools query' command is used for this purpose
-bcftools query -f '%CHROM\t%POS\t%QD\t%FS\t%MQ\t%MQRankSum\t%ReadPosRankSum\t%SOR\n' "$input_vcf" >> $output_table
+bcftools query -f '%CHROM\t%POS\t%QUAL\t%DP\t%QD\t%FS\t%MQ\t%MQRankSum\t%ReadPosRankSum\t%SOR\t%BaseQRankSum\n' "$input_vcf" >> $output_table
