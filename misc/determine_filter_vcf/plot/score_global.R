@@ -68,7 +68,7 @@ proportions_pass <- annotations %>%
     pass_MQRankSum = round(mean(MQRankSum > lim.MQRankSum), 3),
     pass_ReadPosRankSum = round(mean(ReadPosRankSum > lim_inf.ReadPosRankSum & ReadPosRankSum < lim_sup.ReadPosRankSum), 3),
     pass_SOR = round(mean(SOR < lim.SOR), 3),
-    pass_BaseQRanlSum = round(mean(BaseQRankSum > lim.BaseQRankSum), 3)
+    pass_BaseQRankSum = round(mean(BaseQRankSum > lim.BaseQRankSum), 3)
   )
 print(proportions_pass)
 
@@ -111,7 +111,7 @@ QD_plot
 FS_plot <- ggplot(annotations, aes(x = FS)) +
   geom_density(fill = "lightblue") +
   geom_vline(xintercept = lim.FS, color = "red") +
-  ggtitle(paste0("FS < ", lim.FS,  ", pass: ", proportions_pass$pass_QD)) +
+  ggtitle(paste0("FS < ", lim.FS,  ", pass: ", proportions_pass$pass_FS)) +
   theme_minimal() +
   theme(
     plot.title = element_text(size = 20, hjust = 0.5, face = "bold")  
@@ -162,7 +162,7 @@ SOR_plot
 BaseQRankSum_plot <- ggplot(annotations, aes(x = BaseQRankSum)) +
   geom_density(fill = "lightblue") +
   geom_vline(xintercept = lim.BaseQRankSum, color = "red") +
-  ggtitle(paste0("BaseQRankSum > ", lim.BaseQRankSum, ", pass: ", proportions_pass$pass_SOR)) +
+  ggtitle(paste0("BaseQRankSum > ", lim.BaseQRankSum, ", pass: ", proportions_pass$pass_BaseQRankSum)) +
   theme_minimal() +
   theme(
     plot.title = element_text(size = 20, hjust = 0.5, face = "bold")  
