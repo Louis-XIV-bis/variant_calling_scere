@@ -142,7 +142,7 @@ ReadPosRankSum_plot <- ggplot(annotations, aes(x = ReadPosRankSum)) +
   geom_density(fill = "lightblue") +
   geom_vline(xintercept = lim_inf.ReadPosRankSum, color = "red") +
   geom_vline(xintercept = lim_sup.ReadPosRankSum, color = "red") +
-  ggtitle(paste0("ReadPosRankSum in range: ", lim_inf.ReadPosRankSum, " to ", lim_sup.ReadPosRankSum, ", pass: ", proportions_pass$pass_ReadPosRankSum)) +
+  ggtitle(paste0("ReadPosRankSum: ", lim_inf.ReadPosRankSum, " to ", lim_sup.ReadPosRankSum, ", pass: ", proportions_pass$pass_ReadPosRankSum)) +
   theme_minimal() +
   theme(
     plot.title = element_text(size = 20, hjust = 0.5, face = "bold")  
