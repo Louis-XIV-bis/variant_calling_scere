@@ -12,7 +12,7 @@ if (!require('tidyr', quietly = T)) install.packages('tidyr');
 if (!require('dplyr', quietly = T)) install.packages('dplyr');
 if (!require('grid', quietly = T)) install.packages('grid');
 if (!require('gridExtra', quietly = T)) install.packages('gridExtra');
-if (!require('VennDiagram', quietly = T)) install.packages('VennDiagram');
+if (!require('ggVennDiagram', quietly = T)) install.packages('ggVennDiagram');
 
 library(ggplot2)
 library(tibble)
@@ -20,7 +20,7 @@ library(tidyr)
 library(dplyr)
 library(grid)
 library(gridExtra)
-library(VennDiagram)
+library(ggVennDiagram)
 
 ########################################################################
 ###### Data upload and basic analyses ----------------------------------
@@ -189,76 +189,21 @@ combined_plot <- arrangeGrob(
 )
 ggsave("FiltersDistrib.png", plot = combined_plot, width = 10, height = 13, units = "in")
 
+###### Venn diagram for all filtered SNP per score-------------------------
 
-###### TODO : add proportion data at the end, remove N et bandwrith
-
-### VENN DIAGRAM, intersect of filters  :: A REVOIR 
-qd.pass = which(annotations$QD > lim.QD)
-mq.pass = which(annotations$MQ < lim.MQ)
-fs.pass = which(annotations$FS > lim.FS)
-sor.pass = which(annotations$SOR > lim.SOR)
-mqrs.pass= which(annotations$MQRankSum < lim.MQRankSum)
-rprs.pass= which(annotations$ReadPosRankSum > lim_inf.ReadPosRankSum & annotations$ReadPosRankSum < lim_inf.ReadPosRankSum)
-bqrs.pass= which(annotations$BaseQRankSum > lim.BaseQRankSum)
-
-# Create a list
+# Create a list for each filtered each per score : keep only the filtered position to compare
 param_list <- list(
-  QD = qd.pass,
-  MQ = mq.pass,
-  SOR = fs.pass,
-  MQRS = sor.pass,
-  ReadPosRS = mqrs.pass,
-  FS = rprs.pass,
-  BaseQRS = bqrs.pass
+  QD = which(annotations$QD < lim.QD),
+  MQ = which(annotations$MQ < lim.MQ),
+  SOR = which(annotations$SOR > lim.SOR),
+  MQRS = which(annotations$MQRankSum < lim.MQRankSum),
+  ReadPosRS = which(annotations$ReadPosRankSum < lim_inf.ReadPosRankSum | annotations$ReadPosRankSum > lim_sup.ReadPosRankSum),
+  FS = which(annotations$FS > lim.FS),
+  BaseQRS =  which(annotations$BaseQRankSum < lim.BaseQRankSum)
 )
 
-library(VennDiagram)
-
-venn.diagram(
-  x = param_list,
-  category.names = c("QD", "MQ", "FS", "SOR", "MQRS", "ReadPosRS", "BaseQRS"),
-  filename = "Venn_7params_Filters.png",
-  fill = c("blue", "darkgreen", "orange", "yellow", "red", "pink", "purple"),
-  alpha = 0.5,
-  cex = 0.8,
-  cat.cex = 0.6,
-  cat.col =,
-  margin = 0.1
-)
-
-install.packages("venn")
-library(venn)
-venn_result = venn(param_list)
-# Extract the counts of intersections
-intersection_counts <- venn_result$counts
-
-# Print intersection counts
-print(intersection_counts)
-
-
-install.packages("ggVennDiagram")
-library("ggVennDiagram")
-ggVennDiagram(param_list, label_alpha = 0)
-
-
-# TO TEST : 
-install.packages("ggvenn")
-ggvenn(
-  param_list, 
-  fill_color = c("blue", "darkgreen", "orange", "yellow", "red", "pink", "purple"),
-  stroke_size = 0.5, set_name_size = 4
-)
-
-install.package("gplots")`
-library(gplots)
-v.table <- venn(x)
-
-
-install.packages("GenSA")
-install.packages("RcppArmadillo")
-
-install.packages("eulerr")
-library(eulerr)
-
-euler_result <- euler(param_list)
-plot(euler_result)
+venn = ggVennDiagram(param_list, label_alpha = 0) + 
+  scale_fill_distiller(palette = "Reds", direction = 1) + 
+  labs(title = "Venn diagram of the filtered SNP for each filter")
+venn
+ggsave("venn_filters.png", plot = venn, width = 15, height = 13)
