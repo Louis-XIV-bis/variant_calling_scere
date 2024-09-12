@@ -107,7 +107,8 @@ rule gvcf_to_vcf:
 
 
 # Fill the filter column in the VCF: hard filtering based on previous tests (remove if TRUE)
-
+# Do not flag as pass if missing value except for the RankSum scores because they requiere 
+# heterozygous sites 
 
 rule add_filter_vcf:
     input:
@@ -129,15 +130,16 @@ rule add_filter_vcf:
         """
         gatk VariantFiltration -R {params.ref_genome} \
         -V {input} \
-        -filter "QD < 10.0" --filter-name "QD10" \
-        -filter "SOR > 3.0" --filter-name "SOR3" \
-        -filter "FS > 60.0" --filter-name "FS60" \
-        -filter "MQ < 50.0" --filter-name "MQ50" \
+        --filter-expression "QD < 2.0 || QD == '.'" --filter-name "QD2_missing" \
+        --filter-expression "SOR > 2.0 || SOR == '.'" --filter-name "SOR2_missing" \
+        --filter-expression "FS > 60.0 || FS == '.'" --filter-name "FS60_missing" \
+        --filter-expression "MQ < 50.0 || MQ == '.'" --filter-name "MQ50_missing" \
+        --filter-expression "MQRankSum < -10.0" --filter-name "MQRankSum-10" \
+        --filter-expression "ReadPosRankSum < -5.0" --filter-name "ReadPosRankSum-5" \
+        --filter-expression "ReadPosRankSum > 5.0" --filter-name "ReadPosRankSum5" \
+        --filter-expression "BaseQRankSum < -2.0" --filter-name "BaseQRankSum-2" \
         -O {output} > {log.stdout} 2> {log.stderr}
         """
-
-#    "-filter 'MQRankSum < (-12.5)' --filter-name 'MQRankSum-12.5' "
-#    "-filter 'ReadPosRankSum < (-8)' --filter-name ReadPosRankSum-8' "
 
 # Remove the SNP that didn't pass the filter (based on the FILTER column)
 
@@ -159,7 +161,7 @@ rule filter_vcf:
     log:
         stderr="logs/filter_vcf_{contig}.stderr"
     shell:
-        "vcftools --gzvcf {input} --remove-filtered-all --recode --stdout  gzip -c > {output} 2> {log.stderr}"
+        "vcftools --gzvcf {input} --remove-filtered-all --recode --stdout | gzip -c > {output} 2> {log.stderr}"
 
 ############# Remove repeted regions #############
 # Remove repeted regions from the genome (see resources/README.md) 
