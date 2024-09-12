@@ -6,9 +6,8 @@
 # This script extracts specific fields from a VCF file and outputs them to a CSV file.
 # It is intended to be run on a compute cluster using the SLURM job scheduler.
 
-# Activate the required conda environment
-# Ensure that the path is correct for your environment
-source /shared/ifbstor1/software/miniconda/bin/activate /shared/projects/yeast_neutral_model/varcall_env
+# Activate your conda environment
+# conda activate your_env 
 
 # Input arguments
 input_vcf=$1  
