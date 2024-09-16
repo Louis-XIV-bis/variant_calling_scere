@@ -175,6 +175,7 @@ rule remove_rep_regions:
         "results/vcf/repremoved_filtered_merged_strains_{contig}.vcf.gz",
     params:
         rep_regions=config["rep_regions"],
+        tmp_vcf="temp_filtered_repremoved_yeast_strains.vcf"
     threads: resources["remove_rep_regions"]["cpu_tasks"]
     resources:
         slurm_partition=resources["remove_rep_regions"]["partition"],
@@ -186,9 +187,9 @@ rule remove_rep_regions:
         stderr="logs/remove_rep_regions_{contig}.stderr"
     shell:
         """
-        bcftools view -h {input} > temp_{wildcards.contig}.vcf 2> {log.stderr}; \ 
-        bedtools subtract -a {input} -b {params.rep_regions} >> temp_{wildcards.contig}.vcf 2>> {log.stderr}; \
-        tabix -p vcf temp_{wildcards.contig}.vcf; \ 
-        bgzip -c temp_{wildcards.contig}.vcf > {output}; \ 
-        rm temp_{wildcards.contig}.vcf
+        bcftools view -h {input} > {params.tmp_vcf} 2> {log.stderr}; \
+        bedtools subtract -a {input} -b {params.rep_regions} >> {params.tmp_vcf} 2>> {log.stderr}; \
+        bgzip -c {params.tmp_vcf} > {output}; \
+        tabix -p vcf {output}; \
+        rm {params.tmp_vcf}
         """

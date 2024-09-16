@@ -185,8 +185,8 @@ BaseQRankSum_plot
 
 text_grob <- textGrob(
   paste0("Raw dataset: ", rows_before, " SNP                                        \n", 
-         "After removing sites w/ NA                 \n
-         (except RankSum scores: ", rows_after, " SNP)               \n", 
+         "After removing sites w/ NA
+         (except RankSum scores: ", rows_after, " SNP)\n", 
          "After filtration w/ shown thresholds: ", rows_after_filtering, " SNP"), 
   gp = gpar(fontsize = 15, fontface = "bold", col = "black"))
 # Left justification didn't work properly so I came up with theses spaces
