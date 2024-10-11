@@ -31,12 +31,14 @@ def dl_tsv_ENA(list_ENA: List[str], results_dir: str) -> None:
         if response.status_code == 200:
             output = results_dir + ENA_id + '.tsv'
             
-        try:
-            with open(output, 'wb') as file:
-                file.write(response.content)
-        except Exception as e:
-            print(f'Error saving TSV for ENA ID {ENA_id}: {e}')
-
+            try:
+                with open(output, 'wb') as file:
+                    file.write(response.content)
+            except Exception as e:
+                print(f'Error saving TSV for ENA ID {ENA_id}: {e}')
+        else:
+            print(f'Failed to download TSV for ENA ID {ENA_id}. Status code: {response.status_code}')
+            
 
 def merge_tsv_files(results_dir: str, output_file: str) -> None:
     """
