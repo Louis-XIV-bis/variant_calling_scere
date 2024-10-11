@@ -24,21 +24,19 @@ def dl_tsv_ENA(list_ENA: List[str], results_dir: str) -> None:
 
     for ENA_id in list_ENA:
 
-        url = f'https://www.ebi.ac.uk/ena/portal/api/filereport?accession={ENA_id}&result=read_run&fields=study_accession,run_accession,tax_id,scientific_name,instrument_platform,study_title,fastq_md5,fastq_ftp,sample_alias,sample_title&format=tsv&download=true&limit=0'
+        url = f'https://www.ebi.ac.uk/ena/portal/api/filereport?accession={ENA_id}&result=read_run&fields=study_accession,sample_accession,experiment_accession,run_accession,tax_id,scientific_name,instrument_platform,instrument_model,library_layout,library_strategy,library_source,library_selection,read_count,base_count,center_name,study_title,fastq_md5,fastq_ftp,sra_ftp,sample_alias,sample_title&format=tsv&download=true&limit=0'
         response = requests.get(url)
         
         # Check if the request was successful (status code 200)
         if response.status_code == 200:
             output = results_dir + ENA_id + '.tsv'
             
-            try:
-                with open(output, 'wb') as file:
-                    file.write(response.content)
-            except Exception as e:
-                print(f'Error saving TSV for ENA ID {ENA_id}: {e}')
-        else:
-            print(f'Failed to download TSV for ENA ID {ENA_id}. Status code: {response.status_code}')
-            
+        try:
+            with open(output, 'wb') as file:
+                file.write(response.content)
+        except Exception as e:
+            print(f'Error saving TSV for ENA ID {ENA_id}: {e}')
+
 
 def merge_tsv_files(results_dir: str, output_file: str) -> None:
     """
