@@ -138,8 +138,7 @@ rule merge_vcfs:
         > "{log.stdout}" 2> "{log.stderr}"; \
         rm tomerge.list
         '''
-# if merge not work : list of file .list instead 
-
+        
 
 # Fill the filter column in the VCF: hard filtering based on previous tests (remove if TRUE)
 # Do not flag as pass if missing value except for the RankSum scores because they requiere 

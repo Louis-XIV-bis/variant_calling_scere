@@ -14,9 +14,9 @@ The main steps of the pipeline are:
 - merging the same strains from a given paper with [samtools merge](https://www.htslib.org/doc/samtools-merge.html)
 - marking of duplicates with [gatk MarkDuplicatesSpark](https://gatk.broadinstitute.org/hc/en-us/articles/360037224932-MarkDuplicatesSpark)
 - variant calling with [gatk HaplotypeCaller](https://gatk.broadinstitute.org/hc/en-us/articles/360037225632-HaplotypeCaller)
-- merging per strain gVCF to population gVCF with [gatk CombineGVCFs](https://gatk.broadinstitute.org/hc/en-us/articles/360037053272-CombineGVCFs)
-- converting gVCF to VCF with [gatk GenotypeGVCFs](https://gatk.broadinstitute.org/hc/en-us/articles/360037057852-GenotypeGVCFs)
-- removing repeated regions with [gatk VariantFiltration](https://gatk.broadinstitute.org/hc/en-us/articles/360037434691-VariantFiltration) and [vcftools](https://vcftools.github.io/index.html).
+- merging per strain gVCF to population VCF with [gatk GenomicsDBImport](https://gatk.broadinstitute.org/hc/en-us/articles/360036883491-GenomicsDBImport) & [gatk GenotypeGVCFs](https://gatk.broadinstitute.org/hc/en-us/articles/360037057852-GenotypeGVCFs)
+- filtering sites based on scores with [gatk VariantFiltration](https://gatk.broadinstitute.org/hc/en-us/articles/360037434691-VariantFiltration) and [bcftools](https://samtools.github.io/bcftools/bcftools.html)
+- removing repeated regions with [bedtools](https://bedtools.readthedocs.io/en/latest/)
 
 The pipeline is separated in two pipelines: the first it for downloading the fastq and do the process to get the individual gVCFs, the second is to merge the individual gVCFs to obtain a filtered VCF. Both can (and have to) be run independantly. 
 
@@ -25,9 +25,9 @@ The pipelines work with a list of **ENA IDs** as input, for which you can get re
 Here is a representation of the pipeline:    
   
 ![Logo](/misc/plot_readme/DAG_pipeline.png)
-
-It is possible (described below) to run the second pipeline for individual chromosome of every individual. After splitting the gVCFs from the first pipeline into per-chromosome gVCF, the **merge_gvcf**, **gvcf_to_vcf, **filter_vcf** and "remove_rep_regions** will be run in parallel for each chromosome (technical details below). You'll end up with as many VCF as you have chrosomomes in your species. It'll be up to you to merge these VCF into a single one if needed.  
   
+For the second part of the pipeline, you need to specify (in **config/config.yaml**) the chromosomes names that you want to include in the VCF. Since it can be specific sometimes, it is recommended to extract them from one gVCF file to get the exact name. You'll end up with as many population vcf as the number of chromosomes you specified, they'll be merged into one unique population VCF.
+
 ## System requirements
 
 The only requirement is to be on a SLURM HPC cluster (recommended, but local running is possible, commands are also given for that case) and have a working install of [conda](https://www.anaconda.com/download/#linux) and [git](https://git-scm.com/downloads).
@@ -70,7 +70,7 @@ You can change the profile file according to your preferences.
 ### Running the pipeline
 
 In order to run the pipeline, you need to give some ENA IDs in the **config/config.yaml** file:   
-- If you want to get gVCFs from a given list of ID, add them to **ENA_ID_get_gvcf** in the config file. If you already have the gVCFs from the ENA ID, remove it from the config file otherwise it will be generated again.  
+- If you want to get gVCFs from a given list of ID, add them to **ENA_ID_get_gvcf** in the config file. If you already have the gVCFs from the ENA ID (**you need to have them all, correctly named**), remove it from the config file otherwise it will be generated again.  
 - If you want to merge the gVCFs from a given list of ENA ID (can be different from the first part, **as long as you have all the gVCFs for each ID**), add them to **ENA_ID_merge_gvcf** in the config file. 
 
 
@@ -107,23 +107,18 @@ Follow the correct section if you want to run the pipeline on a SLURM HPC cluste
 
 The process will run in the background using **nohup** and **&**. You can see the progress in the **nohup.out** generated file.
 
-**IMPORTANT**: If you think you computational resources won't be sufficient for the computation of the VCF, we implemented a possibility to split your gVCF by chrososome and then run the second part of the pipeline per chromosome. In order to split your gVCF into chromosome, you need to use the scripts in the **mist/split_gvcf** folder. First: update the **split_single_gvcf.sh** file with your chromosome names and then run (for SLURM): 
-```
-./run_split_gvcf.sh ../../results/gvcf/
-``` 
-
-It will creates a **split_gvcf** folder in the **results** folder with all the chromosome gVCF for ceach individuals. 
-
 ##### SLURM HPC cluster 
 
 To run the first part of the pipeline: 
 ```
 nohup snakemake -s workflow/Snakefile_get_gvcf --profile name_of_profile &
 ```
+
 To second the first part of the pipeline: 
 ```
 nohup snakemake -s workflow/Snakefile_merge_gvcf --profile name_of_profile &
 ```
+REMEMBER: you need to provide the correct names of the chromosome you want to study in the **config.yaml** file.
 
 If you used the per-chromosome method change **Snakefile_merge_gvcf** to **Snakefile_merge_splitgvcf**
 
@@ -139,8 +134,4 @@ To second the first part of the pipeline (resources to changes according to what
 nohup snakemake -s workflow/Snakefile_merge_gvcf --resources mem_mb=64000 --cores 8 &
 ```
 
-If you used the per-chromosome method change **Snakefile_merge_gvcf** to **Snakefile_merge_splitgvcf**
-
-
 Note: you can change the values for the RAM ad the number of core. You can also create a profile to specify more resources but you'd need to change the script for each rule.
-
