@@ -1,2 +1,10 @@
 /results/**
 /misc/determine_filter_vcf/results/table_scores_merged.tsv
+workflow/.snakemake
+.snakemake/
+logs/
+results/
+slurm-*
+nohup.out
+tomerge.list
+analyse_vcf.sh

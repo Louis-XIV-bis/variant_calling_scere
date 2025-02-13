@@ -1,6 +1,7 @@
 # Author: Louis OLLIVIER (louis.xiv.bis@gmail.com)
-# Date : February 2023 
+# Date : February 2025
 
+import re 
 configfile: "config/config.yaml"
 
 # Load the predefined resource requirments ("config/resources.yaml")
@@ -23,77 +24,126 @@ try:
 except FileNotFoundError:
     raise FileNotFoundError("Please, make sure you ran the 'generate_table.py' script before that pipeline (python generate_tables.py merge_gvcf). If you did, the output file was not correctly created.")
 
+# Chromosome ID defined in the script (specie specific, check NCBI or one gvcf)
+CHROMOSOMES = config['chromosomes']
+
+# Generate all the possible combinations of contigs and strains for the output
+output_merge_chrom_vcf = [f"results/vcf/unfiltered_merged_strains_{chrom}.vcf.gz" for chrom in CHROMOSOMES]
+
 localrules:
     all,
 
-rule all: 
+rule all:
     input:
+        # "results/samples.map", 
+        # output_merge_chrom_vcf,
         "results/vcf/unfiltered_yeast_strains.vcf.gz",
         "results/vcf/filtered_yeast_strains.vcf.gz",
-        "results/vcf/filtered_repremoved_yeast_strains.vcf",
+        "results/vcf/filtered_repremoved_yeast_strains.vcf.gz",
+        # expand("results/gvcf/{ENA_strain}.g.vcf.gz", ENA_strain=ENA_strain_list),
+
+# # Create a "sample map" that is a tsv file of the sample name and the associated gvcf file path.
+# rule generate_sample_map:
+#     input:
+#         expand("results/gvcf/{ENA_strain}.g.vcf.gz", ENA_strain=ENA_strain_list), 
+#     output:
+#         "results/samples.map", 
+#     resources:
+#         slurm_partition=resources["generate_sample_map"]["partition"],
+#         mem_mb=resources["generate_sample_map"]["memory"],
+#         tasks=resources["generate_sample_map"]["tasks"],
+#         cpus_per_task=resources["generate_sample_map"]["cpu_tasks"],
+#         jobname=resources["generate_sample_map"]["jobname"],
+#     log:
+#         stdout="logs/generate_sample_map.stdout",
+#         stderr="logs/generate_sample_map.stderr",
+#     run:
+#         with open(output[0], "w") as f:
+#             for input_file in input:
+#                 # Extract the sample name using regex
+#                 match = re.search(r"PRJ[\w]+_(\S+?)(?=\.g\.vcf\.gz)", input_file)
+#                 if match:
+#                     sample_name = match.group(1)  # The captured sample name
+#                     f.write(f"{sample_name}\t{input_file}\n")
+#                 else:
+#                     raise ValueError(f"Sample name not found in file: {input_file}")
 
 
-# Combine per sample gVCF into multi-sample gVCF using CombineGVCFs
-# (since we only produce gVCF w/ HaplotypeCaller it's OK tu use this tool).
+# # Create a genomic DB for each chromosome of all samples then use it 
+# # to get the raw VCF per chromosome (for all samples)
+# rule merge_gvcfs:
+#     input:
+#         "results/samples.map"
+#     output:
+#         "results/vcf/unfiltered_merged_strains_{chrom}.vcf.gz",
+#     params:
+#         ref_genome=config["ref_genome"],
+#         threads=resources["merge_gvcfs"]["cpu_tasks"],
+#     threads: resources["merge_gvcfs"]["cpu_tasks"],
+#     resources:
+#         slurm_partition=resources["merge_gvcfs"]["partition"],
+#         mem_mb=resources["merge_gvcfs"]["memory"],
+#         tasks=resources["merge_gvcfs"]["tasks"],
+#         cpus_per_task=resources["merge_gvcfs"]["cpu_tasks"],
+#         jobname=resources["merge_gvcfs"]["jobname"],
+#     log:
+#         genomicsdb="logs/genomicsdb_{chrom}.log", 
+#         genotypegvcfs="logs/genotypegvcfs_{chrom}.log",
+#     shell:
+#         '''
+#         # Create the GenomicDBImport command for this chromosome
+#         gatk --java-options "-Xmx230g -Xms230g" GenomicsDBImport \
+#         --genomicsdb-workspace-path "results/chrom_DB_{wildcards.chrom}" \
+#         --sample-name-map {input} \
+#         --verbosity DEBUG \
+#         --batch-size 100 \
+#         --intervals "{wildcards.chrom}" \
+#         --reference {params.ref_genome} \
+#         --reader-threads {params.threads} \
+#         --overwrite-existing-genomicsdb-workspace true \
+#         > "{log.genomicsdb}" 2>&1 
 
+#         # Use the GenomicDB to generate the final VCF (if needed)
+#         gatk --java-options "-Xmx230g -Xms230g" GenotypeGVCFs \
+#             -R {params.ref_genome} \
+#             -V "gendb://results/chrom_DB_{wildcards.chrom}" \
+#             -O "{output}" \
+#             > "{log.genotypegvcfs}" 2>&1
+#         '''
 
-rule merge_gvcfs:
+# Merge all the per chromosome VCF into one unique VCF file 
+rule merge_vcfs:
     input:
-        expand("results/gvcf/{ENA_strain}.g.vcf.gz", ENA_strain=ENA_strain_list),
+        expand("results/vcf/unfiltered_merged_strains_{chrom}.vcf.gz", chrom=CHROMOSOMES)
     output:
-        temp("results/vcf/merged_strains.g.vcf.gz"),
+        "results/vcf/unfiltered_yeast_strains.vcf.gz"
     params:
-        ref_genome=config["ref_genome"],
-        file_name="list_gvcf.list",
-    threads: resources["merge_gvcfs"]["cpu_tasks"]
+        ref_genome=config["ref_genome"]
+    threads: resources["merge_vcfs"]["cpu_tasks"]
     resources:
-        slurm_partition=resources["merge_gvcfs"]["partition"],
-        mem_mb=resources["merge_gvcfs"]["memory"],
-        tasks=resources["merge_gvcfs"]["tasks"],
-        cpus_per_task=resources["merge_gvcfs"]["cpu_tasks"],
-        jobname=resources["merge_gvcfs"]["jobname"],
+        slurm_partition=resources["merge_vcfs"]["partition"],
+        mem_mb=resources["merge_vcfs"]["memory"],
+        tasks=resources["merge_vcfs"]["tasks"],
+        cpus_per_task=resources["merge_vcfs"]["cpu_tasks"],
+        jobname=resources["merge_vcfs"]["jobname"],
     log:
-        stdout="logs/merge_gvcfs.stdout", stderr="logs/merge_gvcfs.stderr"
-    run:
-        with open(params.file_name, "w") as file:
-            for element in input:
-                file.write(str(element) + "\n")
-
-        shell(
-            "gatk CombineGVCFs -R {params.ref_genome} -O {output} -V {params.file_name} > {log.stdout} 2> {log.stderr}"
-        )
-        os.remove(params.file_name)
-
-
-# Convert the multi-sample gVCF to the multi-sample VCF file
-# using GenotypeGVCFs.
-
-
-rule gvcf_to_vcf:
-    input:
-        "results/vcf/merged_strains.g.vcf.gz",
-    output:
-        "results/vcf/unfiltered_yeast_strains.vcf.gz",
-    params:
-        ref_genome=config["ref_genome"],
-    threads: resources["gvcf_to_vcf"]["cpu_tasks"]
-    resources:
-        slurm_partition=resources["gvcf_to_vcf"]["partition"],
-        mem_mb=resources["gvcf_to_vcf"]["memory"],
-        tasks=resources["gvcf_to_vcf"]["tasks"],
-        cpus_per_task=resources["gvcf_to_vcf"]["cpu_tasks"],
-        jobname=resources["gvcf_to_vcf"]["jobname"],
-    log:
-        stdout="logs/gvcf_to_vcf.stdout", stderr="logs/gvcf_to_vcf.stderr"
+        stdout="logs/merge_vcfs.stdout",
+        stderr="logs/merge_vcfs.stderr"
     shell:
-        "gatk GenotypeGVCFs -R {params.ref_genome} -V {input} -O {output} > {log.stdout} 2> {log.stderr}"
+        '''
+        echo "{input}" | tr ' ' '\n' > tomerge.list ; \
+        gatk --java-options "-Xmx450g -Xms450g" MergeVcfs \
+        -O "{output}" \
+        -I tomerge.list \
+        > "{log.stdout}" 2> "{log.stderr}"; \
+        rm tomerge.list
+        '''
+# if merge not work : list of file .list instead 
 
 
 # Fill the filter column in the VCF: hard filtering based on previous tests (remove if TRUE)
 # Do not flag as pass if missing value except for the RankSum scores because they requiere 
-# heterozygous sites 
-
-
+# heterozygous sites (if it's homozygous, can't compute these score but sites are still valid!)
 rule add_filter_vcf:
     input:
         "results/vcf/unfiltered_yeast_strains.vcf.gz",
@@ -111,8 +161,8 @@ rule add_filter_vcf:
     log:
         stdout="logs/add_filter_vcf.stdout", stderr="logs/add_filter_vcf.stderr"
     shell:
-        """
-        gatk VariantFiltration -R {params.ref_genome} \
+        '''
+        gatk --java-options "-Xmx450g -Xms450g" VariantFiltration -R {params.ref_genome} \
         -V {input} \
         --filter-expression "QD < 2.0 || QD == '.'" --filter-name "QD2_missing" \
         --filter-expression "SOR > 2.0 || SOR == '.'" --filter-name "SOR2_missing" \
@@ -123,11 +173,9 @@ rule add_filter_vcf:
         --filter-expression "ReadPosRankSum > 5.0" --filter-name "ReadPosRankSum5" \
         --filter-expression "BaseQRankSum < -2.0" --filter-name "BaseQRankSum-2" \
         -O {output} > {log.stdout} 2> {log.stderr}
-        """
+        '''
 
 # Remove the SNP that didn't pass the filter (based on the FILTER column)
-
-
 rule filter_vcf:
     input:
         "results/vcf/addfilter_yeast_strains.vcf.gz",
@@ -143,21 +191,20 @@ rule filter_vcf:
     log:
         stderr="logs/filter_vcf.stderr"
     shell:
-        "vcftools --gzvcf {input} --remove-filtered-all --recode --stdout | gzip -c > {output} 2> {log.stderr}"
+        '''
+        bcftools view -f PASS -o {output} -Oz {input} 2> {log.stderr}; \
+        tabix -p vcf {output}
+        '''
 
-############# Remove repeted regions #############
 # Remove repeted regions from the genome (see resources/README.md) 
 # for more info about the input file
-
 rule remove_rep_regions:
-    priority: 12
     input:
         "results/vcf/filtered_yeast_strains.vcf.gz",
     output:
         "results/vcf/filtered_repremoved_yeast_strains.vcf.gz",
     params:
-        rep_regions=config["rep_regions"],
-        tmp_vcf="temp_filtered_repremoved_yeast_strains.vcf"
+        rep_regions=config["rep_regions"]
     threads: resources["remove_rep_regions"]["cpu_tasks"]
     resources:
         slurm_partition=resources["remove_rep_regions"]["partition"],
@@ -168,10 +215,8 @@ rule remove_rep_regions:
     log:
         stderr="logs/remove_rep_regions.stderr"
     shell:
-        """   
-        bcftools view -h {input} > {params.tmp_vcf} 2> {log.stderr}; \
-        bedtools subtract -a {input} -b {params.rep_regions} >> {params.tmp_vcf} 2>> {log.stderr}; \
-        bgzip -c {params.tmp_vcf} > {output}; \
-        tabix -p vcf {output}; \
-        rm {params.tmp_vcf}
-        """
+        '''   
+        (bcftools view -h {input}; \
+        bedtools subtract -a {input} -b {params.rep_regions}) | bgzip -c > {output} 2> {log.stderr}; \
+        tabix -p vcf {output}
+        '''        

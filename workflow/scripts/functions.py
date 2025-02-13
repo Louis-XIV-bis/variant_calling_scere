@@ -24,7 +24,7 @@ def dl_tsv_ENA(list_ENA: List[str], results_dir: str) -> None:
 
     for ENA_id in list_ENA:
 
-        url = f'https://www.ebi.ac.uk/ena/portal/api/filereport?accession={ENA_id}&result=read_run&fields=study_accession,run_accession,tax_id,scientific_name,instrument_platform,study_title,fastq_md5,fastq_ftp,sample_alias,sample_title&format=tsv&download=true&limit=0'
+        url = f'https://www.ebi.ac.uk/ena/portal/api/filereport?accession={ENA_id}&result=read_run&fields=run_accession,sample_accession,experiment_accession,study_accession,tax_id,instrument_platform,instrument_model,library_layout,library_strategy,library_source,library_selection,read_count,base_count,center_name,study_title,fastq_md5,fastq_ftp,sample_alias,sample_title&format=tsv&download=true&limit=0'
         response = requests.get(url)
         
         # Check if the request was successful (status code 200)

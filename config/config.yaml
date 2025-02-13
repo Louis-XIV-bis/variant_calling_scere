@@ -2,7 +2,38 @@ ref_genome: 'resources/ref/S288C_reference_sequence_R64-4-1_20230830.fasta'
 tax_id: 4932
 rep_regions: 'resources/rep_regions/rep_regions_Scere.bed' 
 
+chromosomes:
+- ref|NC_001224|
+- ref|NC_001136|
+- ref|NC_001139|
+- ref|NC_001140|
+- ref|NC_001142|
+- ref|NC_001143|
+- ref|NC_001144|
+- ref|NC_001145|
+- ref|NC_001147|
+- ref|NC_001224|
+- ref|NC_001133|
+- ref|NC_001134|
+- ref|NC_001135|
+- ref|NC_001137|
+- ref|NC_001138|
+- ref|NC_001141|
+- ref|NC_001146|
+- ref|NC_001148|
+
+
 ENA_ID_get_gvcf:
+  - PRJNA646611
+  - PRJEB6529
+  - PRJNA320792
+  - PRJNA473622
+  - PRJNA632495
+  - PRJNA910339
+  - PRJNA1018716 
+  - PRJEB42916
+
+ENA_ID_merge_gvcf:
   - PRJEB13017
   - PRJNA303109
   - PRJEB7601
@@ -37,7 +68,11 @@ ENA_ID_get_gvcf:
   - PRJDB7313
   - PRJEB8455
   - PRJEB31088
-
-ENA_ID_merge_gvcf:
-  - PRJNA504476
-  # - PRJNA186707
+  - PRJEB6529
+  - PRJNA320792
+  - PRJNA473622
+  - PRJNA632495
+  - PRJNA646611
+  - PRJNA910339
+  - PRJNA1018716
+  - PRJEB42916
