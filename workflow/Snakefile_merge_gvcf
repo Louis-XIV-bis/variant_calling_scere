@@ -69,47 +69,47 @@ rule all:
 #                     raise ValueError(f"Sample name not found in file: {input_file}")
 
 
-# # Create a genomic DB for each chromosome of all samples then use it 
-# # to get the raw VCF per chromosome (for all samples)
-# rule merge_gvcfs:
-#     input:
-#         "results/samples.map"
-#     output:
-#         "results/vcf/unfiltered_merged_strains_{chrom}.vcf.gz",
-#     params:
-#         ref_genome=config["ref_genome"],
-#         threads=resources["merge_gvcfs"]["cpu_tasks"],
-#     threads: resources["merge_gvcfs"]["cpu_tasks"],
-#     resources:
-#         slurm_partition=resources["merge_gvcfs"]["partition"],
-#         mem_mb=resources["merge_gvcfs"]["memory"],
-#         tasks=resources["merge_gvcfs"]["tasks"],
-#         cpus_per_task=resources["merge_gvcfs"]["cpu_tasks"],
-#         jobname=resources["merge_gvcfs"]["jobname"],
-#     log:
-#         genomicsdb="logs/genomicsdb_{chrom}.log", 
-#         genotypegvcfs="logs/genotypegvcfs_{chrom}.log",
-#     shell:
-#         '''
-#         # Create the GenomicDBImport command for this chromosome
-#         gatk --java-options "-Xmx230g -Xms230g" GenomicsDBImport \
-#         --genomicsdb-workspace-path "results/chrom_DB_{wildcards.chrom}" \
-#         --sample-name-map {input} \
-#         --verbosity DEBUG \
-#         --batch-size 100 \
-#         --intervals "{wildcards.chrom}" \
-#         --reference {params.ref_genome} \
-#         --reader-threads {params.threads} \
-#         --overwrite-existing-genomicsdb-workspace true \
-#         > "{log.genomicsdb}" 2>&1 
+# Create a genomic DB for each chromosome of all samples then use it 
+# to get the raw VCF per chromosome (for all samples)
+rule merge_gvcfs:
+    input:
+        "results/samples.map"
+    output:
+        "results/vcf/unfiltered_merged_strains_{chrom}.vcf.gz",
+    params:
+        ref_genome=config["ref_genome"],
+        threads=resources["merge_gvcfs"]["cpu_tasks"],
+    threads: resources["merge_gvcfs"]["cpu_tasks"],
+    resources:
+        slurm_partition=resources["merge_gvcfs"]["partition"],
+        mem_mb=resources["merge_gvcfs"]["memory"],
+        tasks=resources["merge_gvcfs"]["tasks"],
+        cpus_per_task=resources["merge_gvcfs"]["cpu_tasks"],
+        jobname=resources["merge_gvcfs"]["jobname"],
+    log:
+        genomicsdb="logs/genomicsdb_{chrom}.log", 
+        genotypegvcfs="logs/genotypegvcfs_{chrom}.log",
+    shell:
+        '''
+        # Create the GenomicDBImport command for this chromosome
+        gatk --java-options "-Xmx230g -Xms230g" GenomicsDBImport \
+        --genomicsdb-workspace-path "results/chrom_DB_{wildcards.chrom}" \
+        --sample-name-map {input} \
+        --verbosity DEBUG \
+        --batch-size 100 \
+        --intervals "{wildcards.chrom}" \
+        --reference {params.ref_genome} \
+        --reader-threads {params.threads} \
+        --overwrite-existing-genomicsdb-workspace true \
+        > "{log.genomicsdb}" 2>&1 
 
-#         # Use the GenomicDB to generate the final VCF (if needed)
-#         gatk --java-options "-Xmx230g -Xms230g" GenotypeGVCFs \
-#             -R {params.ref_genome} \
-#             -V "gendb://results/chrom_DB_{wildcards.chrom}" \
-#             -O "{output}" \
-#             > "{log.genotypegvcfs}" 2>&1
-#         '''
+        # Use the GenomicDB to generate the final VCF (if needed)
+        gatk --java-options "-Xmx230g -Xms230g" GenotypeGVCFs \
+            -R {params.ref_genome} \
+            -V "gendb://results/chrom_DB_{wildcards.chrom}" \
+            -O "{output}" \
+            > "{log.genotypegvcfs}" 2>&1
+        '''
 
 # Merge all the per chromosome VCF into one unique VCF file 
 rule merge_vcfs:
