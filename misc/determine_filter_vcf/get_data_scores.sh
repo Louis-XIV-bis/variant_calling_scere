@@ -1,13 +1,15 @@
 #!/bin/bash
 
 #SBATCH --job-name=get_data_scores
-#SBATCH --mem=200G 
+#SBATCH --mem=300G 
 
 # This script extracts specific fields from a VCF file and outputs them to a CSV file.
 # It is intended to be run on a compute cluster using the SLURM job scheduler.
 
 # Activate your conda environment
 # conda activate your_env 
+
+module load bcftools 
 
 # Input arguments
 input_vcf=$1  

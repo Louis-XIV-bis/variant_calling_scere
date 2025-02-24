@@ -184,10 +184,10 @@ BaseQRankSum_plot <- ggplot(annotations, aes(x = BaseQRankSum)) +
 BaseQRankSum_plot
 
 text_grob <- textGrob(
-  paste0("Raw dataset: ", rows_before, " SNP                                        \n", 
+  paste0("Raw dataset: ", rows_before, " sites                                        \n", 
          "After removing sites w/ NA
-         (except RankSum scores: ", rows_after, " SNP)\n", 
-         "After filtration w/ shown thresholds: ", rows_after_filtering, " SNP"), 
+         (except RankSum scores: ", rows_after, " sites)\n", 
+         "After filtration w/ shown thresholds: ", rows_after_filtering, " sites"), 
   gp = gpar(fontsize = 15, fontface = "bold", col = "black"))
 # Left justification didn't work properly so I came up with theses spaces
 
@@ -219,6 +219,5 @@ param_list <- list(
 
 venn = ggVennDiagram(param_list, label_alpha = 0) + 
   scale_fill_distiller(palette = "Reds", direction = 1) + 
-  labs(title = "Venn diagram of the filtered SNP for each filter")
-venn
+  labs(title = "Venn diagram of the filtered sites for each filter")
 ggsave("venn_filters.png", plot = venn, width = 15, height = 13)

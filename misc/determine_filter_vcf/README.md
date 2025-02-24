@@ -1,16 +1,14 @@
 # How we got the results for the filtering
 
-First, run the **run_get_data_scores.sh** to retrieve the scores from the unfiltered vcf. Be careful, it's specialized for
-yeast chromosomes, if you use another organism change the chromosome name. It's also specific for SLURM jobs (sbatch, memory, etc).  
+First, run the **run_get_data_scores.sh** to retrieve the scores from the unfiltered vcf. Be careful, it's specific for SLURM jobs (sbatch, memory, etc).  
 
 To run the script, you have two options **merged** (if you have one vcf) or **split** (if you have one vcf per chromosome).  
 
 ```
-./run_get_data_scores split|merged
+./run_get_data_scores
 
 ```
-
-If you used split, you'll obtain multiple tsv file that you can merge use a small script (**results/merge_results.sh**, change the chromosome names if needed).  
+ 
 The final tsv (**table_scores_merged.tsv**) will contain all the score for each sites.  
 
 For the plot, run the **plot/score_global.R** script. It will generate the plot with distribution for each scores with our defined threshold and a Venn diagram.  
