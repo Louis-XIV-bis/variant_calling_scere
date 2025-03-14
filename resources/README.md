@@ -18,7 +18,7 @@ It is possible for you tu use another file as long as it is in BED format and ha
 
 Two different repeated were used (combined into a unique one) present in the **rep_regions/init_files/** folder: 
 
-- From this paper: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4059241/ (supp data, 100nt folder), the chromosome names were change to match with the reference chromosome names  
+- From this paper: https://doi.org/10.1534/g3.113.009464 (supp data, 100nt folder), the chromosome names were change to match with the reference chromosome names  
 - From using RepeatMasker tool on the reference genome (**rep_regions_RM.sh** for the script used and **output_RM** folder for the results)
 bed
 From the 2 .bed files in **init_file** folder, the following commands were used: 

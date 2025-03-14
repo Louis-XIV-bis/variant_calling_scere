@@ -33,13 +33,6 @@ stats_mapping:
   cpu_tasks: 8
   jobname: stats_mapping
 
-variant_calling_gvcf:
-  partition: long
-  memory: 128000
-  tasks: 1
-  cpu_tasks: 4
-  jobname: variant_calling_gvcf
-
 generate_sample_map:
   partition: fast
   memory: 50000

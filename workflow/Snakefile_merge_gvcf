@@ -35,38 +35,38 @@ localrules:
 
 rule all:
     input:
-        # "results/samples.map", 
-        # output_merge_chrom_vcf,
+        expand("results/gvcf/{ENA_strain}.g.vcf.gz", ENA_strain=ENA_strain_list),
+        "results/samples.map", 
+        output_merge_chrom_vcf,
         "results/vcf/unfiltered_yeast_strains.vcf.gz",
         "results/vcf/filtered_yeast_strains.vcf.gz",
         "results/vcf/filtered_repremoved_yeast_strains.vcf.gz",
-        # expand("results/gvcf/{ENA_strain}.g.vcf.gz", ENA_strain=ENA_strain_list),
 
-# # Create a "sample map" that is a tsv file of the sample name and the associated gvcf file path.
-# rule generate_sample_map:
-#     input:
-#         expand("results/gvcf/{ENA_strain}.g.vcf.gz", ENA_strain=ENA_strain_list), 
-#     output:
-#         "results/samples.map", 
-#     resources:
-#         slurm_partition=resources["generate_sample_map"]["partition"],
-#         mem_mb=resources["generate_sample_map"]["memory"],
-#         tasks=resources["generate_sample_map"]["tasks"],
-#         cpus_per_task=resources["generate_sample_map"]["cpu_tasks"],
-#         jobname=resources["generate_sample_map"]["jobname"],
-#     log:
-#         stdout="logs/generate_sample_map.stdout",
-#         stderr="logs/generate_sample_map.stderr",
-#     run:
-#         with open(output[0], "w") as f:
-#             for input_file in input:
-#                 # Extract the sample name using regex
-#                 match = re.search(r"PRJ[\w]+_(\S+?)(?=\.g\.vcf\.gz)", input_file)
-#                 if match:
-#                     sample_name = match.group(1)  # The captured sample name
-#                     f.write(f"{sample_name}\t{input_file}\n")
-#                 else:
-#                     raise ValueError(f"Sample name not found in file: {input_file}")
+# Create a "sample map" that is a tsv file of the sample name and the associated gvcf file path.
+rule generate_sample_map:
+    input:
+        expand("results/gvcf/{ENA_strain}.g.vcf.gz", ENA_strain=ENA_strain_list), 
+    output:
+        "results/samples.map", 
+    resources:
+        slurm_partition=resources["generate_sample_map"]["partition"],
+        mem_mb=resources["generate_sample_map"]["memory"],
+        tasks=resources["generate_sample_map"]["tasks"],
+        cpus_per_task=resources["generate_sample_map"]["cpu_tasks"],
+        jobname=resources["generate_sample_map"]["jobname"],
+    log:
+        stdout="logs/generate_sample_map.stdout",
+        stderr="logs/generate_sample_map.stderr",
+    run:
+        with open(output[0], "w") as f:
+            for input_file in input:
+                # Extract the sample name using regex
+                match = re.search(r"PRJ[\w]+_(\S+?)(?=\.g\.vcf\.gz)", input_file)
+                if match:
+                    sample_name = match.group(1)  # The captured sample name
+                    f.write(f"{sample_name}\t{input_file}\n")
+                else:
+                    raise ValueError(f"Sample name not found in file: {input_file}")
 
 
 # Create a genomic DB for each chromosome of all samples then use it 
