@@ -8,4 +8,3 @@ slurm-*
 nohup.out
 tomerge.list
 analyse_vcf.sh
-/old_snakefile/**
